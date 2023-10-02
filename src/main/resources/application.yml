@@ -1,0 +1,19 @@
+spring:
+  profiles:
+    include: oauth
+
+  datasource:
+    username: sa
+    password:
+    url: jdbc:h2:mem:test;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driverClassName: org.h2.Driver
+  jpa:
+    defer-datasource-initialization: true
+    database-platform: H2
+    hibernate:
+      ddl-auto: create-drop
+  h2:
+    console:
+      enabled: true
+
+server.servlet.encoding.force-response: true
