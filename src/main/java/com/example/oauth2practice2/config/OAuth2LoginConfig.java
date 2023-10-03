@@ -17,6 +17,16 @@ public class OAuth2LoginConfig {
 
     @Value("${kakao-client}")
     private String kakao_clientId;
+    @Value("${kakao-redirectUri}")
+    private String kakao_redirectUri;
+
+    @Value("${google-client}")
+    private String google_clientId;
+    @Value("${google-credential}")
+    private String google_credential;
+    @Value("${google-redirectUri}")
+    private String google_redirectUri;
+
     @Bean
     public ClientRegistrationRepository clientRegistrationRepository() {
         return new InMemoryClientRegistrationRepository(
@@ -25,12 +35,13 @@ public class OAuth2LoginConfig {
 
     private ClientRegistration googleClientRegistration() {
         return ClientRegistration.withRegistrationId("google")
-                .clientId("google-client-id")
-                .clientSecret("google-client-secret")
+                .clientId(google_clientId)
+                .clientSecret(google_credential)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
-                .scope("openid", "profile", "email", "address", "phone")
+                .redirectUri(google_redirectUri)
+                .issuerUri("https://accounts.google.com")
+                .scope("openid","profile","email")
                 .authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
                 .tokenUri("https://www.googleapis.com/oauth2/v4/token")
                 .userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
@@ -44,7 +55,7 @@ public class OAuth2LoginConfig {
         return ClientRegistration.withRegistrationId("kakao")
                 .clientId(kakao_clientId)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .redirectUri("http://localhost:8080/login/oauth2/code/kakao")
+                .redirectUri(kakao_redirectUri)
                 .scope("profile_nickname", "account_email")
                 .authorizationUri("https://kauth.kakao.com/oauth/authorize")
                 .tokenUri("https://kauth.kakao.com/oauth/token")

@@ -2,7 +2,11 @@ package com.example.oauth2practice2.domain.social;
 
 import com.example.oauth2practice2.domain.jwt.JwtDto;
 import com.example.oauth2practice2.domain.member.SignUpForm;
+import com.example.oauth2practice2.domain.social.token.GoogleToken;
+import com.example.oauth2practice2.domain.social.token.KakaoToken;
+import com.example.oauth2practice2.domain.social.token.SocialToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Slf4j
 @Service
@@ -26,8 +32,8 @@ public class SocialLoginService {
 
     public SignUpForm signIn(String providerName, String code){
         ClientRegistration provider = clientRegistrationRepository.findByRegistrationId(providerName);
-        KakaoToken tokens = getTokens(provider, code);
-        return getFormFromUserProfile(provider, tokens.getAccess_token());
+        SocialToken tokens = getTokens(provider, code);
+        return getFormFromUserProfile(provider, tokens.getAccessToken());
     }
 
     private SignUpForm getFormFromUserProfile(ClientRegistration provider, String token) {
@@ -50,15 +56,16 @@ public class SocialLoginService {
         }
     }
 
-    private KakaoToken getTokens(ClientRegistration provider, String code) {
+    private SocialToken getTokens(ClientRegistration provider, String code) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(tokenRequest(provider, code), headers);
         RestTemplate restTemplate = new RestTemplate();
         ResponseEntity<String> response = restTemplate.postForEntity(provider.getProviderDetails().getTokenUri(),
             request, String.class);
+        Class<? extends SocialToken> detailToken = getDetailToken(provider.getClientName());
         try {
-            return new ObjectMapper().readValue(response.getBody(), KakaoToken.class);
+            return new ObjectMapper().readValue(response.getBody(), detailToken);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -76,11 +83,15 @@ public class SocialLoginService {
 
     public String tryOAuth2(String providerName) {
         ClientRegistration provider = clientRegistrationRepository.findByRegistrationId(providerName);
-        return provider.getProviderDetails().getAuthorizationUri()
-            + "?client_id=" + provider.getClientId()
-            + "&response_type=code"
-            + "&redirect_uri=" + provider.getRedirectUri()
-            + "&scope=" + String.join(",", provider.getScopes());
+        String authorizationUri = provider.getProviderDetails().getAuthorizationUri();
+        UriComponents uri = UriComponentsBuilder.fromHttpUrl(authorizationUri)
+                .queryParam("client_id", provider.getClientId())
+                .queryParam("response_type", "code")
+                .queryParam("redirect_uri", provider.getRedirectUri())
+                .queryParam("scope", String.join("%20", provider.getScopes()))
+                .queryParam("state","randomvalue")
+                .build(true);
+        return uri.toUriString();
     }
 
     public ResponseEntity<JwtDto> connectToSocialSignIn(String providerName, String code) {
@@ -88,9 +99,18 @@ public class SocialLoginService {
         headers.setContentType(MediaType.TEXT_PLAIN);
         HttpEntity<String> request = new HttpEntity<>(code, headers);
         RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<JwtDto> response = restTemplate.postForEntity(
+        return restTemplate.postForEntity(
             "http://localhost:8080/login/social/" + providerName,
             request, JwtDto.class);
-        return response;
+    }
+
+    private Class<? extends SocialToken> getDetailToken(String provider) {
+        if (provider.equals("Kakao")) {
+            return KakaoToken.class;
+        }
+        if (provider.equals("Google")) {
+            return GoogleToken.class;
+        }
+        return null;
     }
 }

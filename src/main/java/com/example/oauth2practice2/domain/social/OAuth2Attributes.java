@@ -20,6 +20,8 @@ public class OAuth2Attributes {
         if ("kakao".equals(registrationId)) {
             return ofKakao(attributes);
         }
+        if ("google".equals(registrationId))
+            return ofGoogle(attributes);
 
         throw new RuntimeException("잘못된 OAuth2 provider입니다.");
     }
@@ -32,6 +34,13 @@ public class OAuth2Attributes {
             .name((String) kakaoProfile.get("nickname"))
             .email((String) kakaoAccount.get("email"))
             .build();
+    }
+
+    private static OAuth2Attributes ofGoogle(Map<String, Object> attributes) {
+        return OAuth2Attributes.builder()
+                .name((String)attributes.get("name"))
+                .email((String)attributes.get("email"))
+                .build();
     }
 
 }
